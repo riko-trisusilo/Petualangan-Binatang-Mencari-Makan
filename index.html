@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Petualangan Si Binatang Lapar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            touch-action: manipulation;
+            background: #fef3c7; /* Latar belakang kuning pucat */
+        }
+        .btn-press-effect:active {
+            transform: scale(0.95);
+            filter: brightness(0.9);
+        }
+        .game-object {
+            position: absolute;
+            user-select: none;
+        }
+        .character {
+            font-size: 3rem;
+            bottom: 50%;
+            z-index: 10;
+            transition: left 0.1s linear, bottom 0.1s linear, transform 0.2s ease-in-out;
+        }
+        .food-item, .poison-item, .moving-obstacle {
+            font-size: 2rem;
+            z-index: 5;
+        }
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0; transform: translateY(20px); }
+            10%, 90% { opacity: 1; transform: translateY(0); }
+        }
+        .toast-message {
+            animation: fadeInOut 3s forwards;
+        }
+        
+        /* Latar Belakang Habitat */
+        .habitat-kelinci { background: url('https://placehold.co/600x400/a7f3d0/4d7c0f?text=Ladang+Hijau') center/cover; }
+        .habitat-monyet { background: url('https://placehold.co/600x400/166534/f59e0b?text=Hutan+Rimbun') center/cover; }
+        .habitat-gajah { background: url('https://placehold.co/600x400/fde047/ca8a04?text=Padang+Rumput') center/cover; }
+        .habitat-burung { background: url('https://placehold.co/600x400/7dd3fc/0ea5e9?text=Langit+Biru') center/cover; }
+        .habitat-panda { background: url('https://placehold.co/600x400/15803d/ffffff?text=Hutan+Bambu') center/cover; }
+        .habitat-beruang { background: url('https://placehold.co/600x400/0f766e/a3e635?text=Hutan+Pinus') center/cover; }
+
+        /* Animasi untuk modal */
+        .modal-enter {
+            animation: modal-in 0.3s cubic-bezier(0.250, 0.460, 0.450, 0.940) both;
+        }
+        @keyframes modal-in {
+            0% { transform: scale(0.7); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div id="game-container" class="w-full max-w-2xl mx-auto bg-white rounded-2xl shadow-2xl p-4 sm:p-6 border-4 border-amber-300">
+
+        <!-- Layar Pemilihan Karakter -->
+        <div id="character-selection-screen">
+            <h1 class="text-3xl sm:text-4xl font-black text-center text-amber-600 mb-2">Petualangan Si Binatang Lapar</h1>
+            <p class="text-center text-gray-600 mb-6 sm:mb-8 text-lg">Pilih temanmu untuk berpetualang!</p>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <button onclick="startGame('kelinci')" class="bg-gradient-to-br from-green-400 to-green-600 text-white p-4 rounded-xl shadow-lg transition-transform btn-press-effect">
+                    <div class="text-5xl mb-2">🐇</div><span class="text-xl font-bold">Kiko si Kelinci</span>
+                </button>
+                <button onclick="startGame('monyet')" class="bg-gradient-to-br from-orange-400 to-orange-600 text-white p-4 rounded-xl shadow-lg transition-transform btn-press-effect">
+                    <div class="text-5xl mb-2">🐒</div><span class="text-xl font-bold">Momo si Monyet</span>
+                </button>
+                <button onclick="startGame('gajah')" class="bg-gradient-to-br from-sky-400 to-sky-600 text-white p-4 rounded-xl shadow-lg transition-transform btn-press-effect">
+                    <div class="text-5xl mb-2">🐘</div><span class="text-xl font-bold">Gogo si Gajah</span>
+                </button>
+                <button onclick="startGame('burung')" class="bg-gradient-to-br from-red-400 to-red-600 text-white p-4 rounded-xl shadow-lg transition-transform btn-press-effect">
+                    <div class="text-5xl mb-2">🐦</div><span class="text-xl font-bold">Cici si Burung</span>
+                </button>
+                <button onclick="startGame('panda')" class="bg-gradient-to-br from-gray-400 to-gray-600 text-white p-4 rounded-xl shadow-lg transition-transform btn-press-effect">
+                    <div class="text-5xl mb-2">🐼</div><span class="text-xl font-bold">Popo si Panda</span>
+                </button>
+                <button onclick="startGame('beruang')" class="bg-gradient-to-br from-yellow-600 to-yellow-800 text-white p-4 rounded-xl shadow-lg transition-transform btn-press-effect">
+                    <div class="text-5xl mb-2">🐻</div><span class="text-xl font-bold">Bobi si Beruang</span>
+                </button>
+            </div>
+            <div class="text-center mt-8">
+                <button onclick="showModal('developer')" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-5 rounded-full transition-transform btn-press-effect">Profil Pengembang</button>
+            </div>
+        </div>
+
+        <!-- Layar Permainan Utama -->
+        <div id="game-screen" class="hidden">
+            <div class="flex justify-between items-center mb-4 p-3 bg-white/70 backdrop-blur-sm rounded-lg">
+                <div class="flex items-center gap-3">
+                    <div id="info-character-icon" class="text-4xl"></div>
+                    <div>
+                        <h2 id="info-character-name" class="text-xl font-bold text-gray-800"></h2>
+                        <p id="info-habitat" class="text-sm text-gray-500 font-bold"></p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-gray-500">Makanan:</p>
+                    <p id="info-score" class="text-2xl font-bold text-amber-600">0 / 5</p>
+                </div>
+            </div>
+            <div id="game-canvas" class="relative w-full h-64 sm:h-80 rounded-lg overflow-hidden shadow-inner mb-4 border-2 border-white">
+                 <div id="toast-container" class="absolute top-4 left-1/2 -translate-x-1/2 z-20"></div>
+            </div>
+            <div class="flex justify-between items-center">
+                <button onclick="showMenu()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded-lg transition-transform btn-press-effect">Menu</button>
+                <div class="flex items-center gap-2">
+                    <button id="left-btn" class="bg-amber-500 hover:bg-amber-600 text-white font-black text-2xl w-16 h-16 rounded-full shadow-md transition-transform btn-press-effect">◄</button>
+                    <div class="flex flex-col gap-2">
+                         <button id="up-btn" class="bg-green-500 hover:bg-green-600 text-white font-black text-2xl w-16 h-16 rounded-full shadow-md transition-transform btn-press-effect">▲</button>
+                         <button id="down-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-black text-2xl w-16 h-16 rounded-full shadow-md transition-transform btn-press-effect">▼</button>
+                    </div>
+                    <button id="right-btn" class="bg-amber-500 hover:bg-amber-600 text-white font-black text-2xl w-16 h-16 rounded-full shadow-md transition-transform btn-press-effect">►</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal -->
+        <div id="modal-container" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
+            <div id="modal-content" class="bg-white rounded-2xl p-8 text-center shadow-2xl modal-enter w-full max-w-sm">
+                <!-- Konten modal akan diisi oleh JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- PENGATURAN DATA GAME ---
+        const characterData = {
+            kelinci: { name: 'Kiko si Kelinci', emoji: '🐇', foodEmoji: '🥕', habitat: 'Di Ladang Wortel', totalFood: 5, funFact: 'Wortel sangat baik untuk mata kelinci karena mengandung banyak Vitamin A!', movement: { speed: 20 } },
+            monyet: { name: 'Momo si Monyet', emoji: '🐒', foodEmoji: '🍌', habitat: 'Di Hutan Tropis', totalFood: 5, funFact: 'Monyet menggunakan ekornya untuk menjaga keseimbangan saat memanjat!', movement: { speed: 25 } },
+            gajah: { name: 'Gogo si Gajah', emoji: '🐘', foodEmoji: '🍉', habitat: 'Di Padang Rumput', totalFood: 5, funFact: 'Belalai gajah sangat kuat! Bisa digunakan untuk mengambil makanan dan minum.', movement: { speed: 15 } },
+            burung: { name: 'Cici si Burung', emoji: '🐦', foodEmoji: '🥜', habitat: 'Di Atas Pohon', totalFood: 5, funFact: 'Burung membangun sarang di tempat tinggi agar aman dari pemangsa.', movement: { speed: 20 } },
+            panda: { name: 'Popo si Panda', emoji: '🐼', foodEmoji: '🎍', habitat: 'Di Hutan Bambu', totalFood: 5, funFact: 'Panda bisa menghabiskan 12 jam sehari hanya untuk makan bambu!', movement: { speed: 18 } },
+            beruang: { name: 'Bobi si Beruang', emoji: '🐻', foodEmoji: '🍯', habitat: 'Di Hutan Pinus', totalFood: 5, funFact: 'Beruang memiliki indra penciuman yang sangat tajam, bahkan lebih baik dari anjing.', movement: { speed: 19 } }
+        };
+
+        // --- VARIABEL STATUS GAME ---
+        let currentGame = {};
+        let characterElement;
+        let movingObstacles = [];
+        let gameInterval;
+        let isGameOver = false;
+
+        // --- ELEMEN DOM ---
+        const characterSelectionScreen = document.getElementById('character-selection-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const modalContainer = document.getElementById('modal-container');
+        const modalContent = document.getElementById('modal-content');
+        const gameCanvas = document.getElementById('game-canvas');
+        const toastContainer = document.getElementById('toast-container');
+        const upBtn = document.getElementById('up-btn');
+        const downBtn = document.getElementById('down-btn');
+        const leftBtn = document.getElementById('left-btn');
+        const rightBtn = document.getElementById('right-btn');
+
+        // --- FUNGSI UTAMA GAME ---
+        function startGame(charKey) {
+            isGameOver = false;
+            currentGame = { ...characterData[charKey], key: charKey, score: 0 };
+            
+            characterSelectionScreen.classList.add('hidden');
+            modalContainer.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+
+            // Set latar belakang habitat
+            gameCanvas.className = `relative w-full h-64 sm:h-80 rounded-lg overflow-hidden shadow-inner mb-4 border-2 border-white habitat-${charKey}`;
+
+            document.getElementById('info-character-icon').textContent = currentGame.emoji;
+            document.getElementById('info-character-name').textContent = currentGame.name;
+            document.getElementById('info-habitat').textContent = currentGame.habitat;
+            updateScore();
+            setupLevel();
+            
+            // Mulai game loop
+            clearInterval(gameInterval);
+            gameInterval = setInterval(gameLoop, 50);
+        }
+
+        function setupLevel() {
+            gameCanvas.innerHTML = ''; 
+            gameCanvas.appendChild(toastContainer);
+            movingObstacles = [];
+
+            characterElement = document.createElement('div');
+            characterElement.id = 'character';
+            characterElement.className = 'game-object character';
+            characterElement.textContent = currentGame.emoji;
+            characterElement.style.left = '50%';
+            characterElement.style.transform = 'translateX(-50%) scaleX(1)';
+            gameCanvas.appendChild(characterElement);
+
+            for (let i = 0; i < currentGame.totalFood; i++) createGameObject('food-item', currentGame.foodEmoji);
+            for (let i = 0; i < 2; i++) createGameObject('poison-item', '☠️');
+            for (let i = 0; i < 2; i++) createMovingObstacle();
+        }
+        
+        function createGameObject(className, emoji) {
+            const item = document.createElement('div');
+            item.className = `game-object ${className}`;
+            item.textContent = emoji;
+            item.style.left = `${Math.random() * 90}%`;
+            item.style.bottom = `${10 + Math.random() * 80}%`;
+            gameCanvas.appendChild(item);
+        }
+
+        function createMovingObstacle() {
+            const obstacle = document.createElement('div');
+            const isVertical = Math.random() > 0.5;
+            obstacle.className = 'game-object moving-obstacle';
+            obstacle.textContent = '🦠';
+            obstacle.style.left = `${Math.random() * 90}%`;
+            obstacle.style.bottom = `${10 + Math.random() * 80}%`;
+            gameCanvas.appendChild(obstacle);
+            movingObstacles.push({
+                element: obstacle,
+                isVertical: isVertical,
+                direction: 1,
+                speed: 1 + Math.random() * 2
+            });
+        }
+
+        function gameLoop() {
+            if (isGameOver) return;
+            moveObstacles();
+            checkCollision();
+        }
+
+        function moveObstacles() {
+            movingObstacles.forEach(obs => {
+                if (obs.isVertical) {
+                    let bottom = parseFloat(obs.element.style.bottom);
+                    if (bottom > 90 || bottom < 10) obs.direction *= -1;
+                    obs.element.style.bottom = `${bottom + obs.speed * obs.direction}px`;
+                } else {
+                    let left = parseFloat(obs.element.style.left);
+                    if (left > 90 || left < 5) obs.direction *= -1;
+                    obs.element.style.left = `${left + obs.speed * obs.direction}%`;
+                }
+            });
+        }
+
+        function moveHorizontal(direction) {
+            if (isGameOver) return;
+            const currentLeft = characterElement.offsetLeft;
+            const newLeft = currentLeft + (direction * currentGame.movement.speed);
+            
+            const scaleX = direction === 1 ? '1' : '-1';
+            characterElement.style.transform = `translateX(-50%) scaleX(${scaleX})`;
+
+            if (newLeft >= 0 && newLeft <= (gameCanvas.offsetWidth - characterElement.offsetWidth)) {
+                characterElement.style.left = `${newLeft}px`;
+            }
+        }
+        
+        function moveVertical(direction) {
+            if (isGameOver) return;
+            const newBottom = (characterElement.style.bottom ? parseFloat(characterElement.style.bottom) : (gameCanvas.offsetHeight / 2)) + (direction * currentGame.movement.speed);
+
+            if (newBottom >= 10 && newBottom <= (gameCanvas.offsetHeight - characterElement.offsetHeight)) {
+                characterElement.style.bottom = `${newBottom}px`;
+            }
+        }
+
+        function checkCollision() {
+            if (isGameOver) return;
+            const charRect = characterElement.getBoundingClientRect();
+            
+            document.querySelectorAll('.food-item').forEach(food => {
+                if (isColliding(charRect, food.getBoundingClientRect())) {
+                    food.remove();
+                    currentGame.score++;
+                    updateScore();
+                    showToast('Yum!');
+                    if (currentGame.score === currentGame.totalFood) levelComplete();
+                }
+            });
+
+            document.querySelectorAll('.poison-item, .moving-obstacle').forEach(danger => {
+                if (isColliding(charRect, danger.getBoundingClientRect())) gameOver();
+            });
+        }
+        
+        function gameOver() {
+            if (isGameOver) return;
+            isGameOver = true;
+            clearInterval(gameInterval);
+            characterElement.textContent = '😵';
+            showModal('gameover');
+        }
+
+        function levelComplete() {
+            isGameOver = true;
+            clearInterval(gameInterval);
+            showModal('complete');
+        }
+
+        function showModal(type) {
+            let content = '';
+            if (type === 'complete') {
+                content = `
+                    <div class="text-7xl mb-4">🎉</div>
+                    <h2 class="text-4xl font-black text-green-600 mb-2">Hebat!</h2>
+                    <p class="text-lg text-gray-700 mb-4">Kamu berhasil membantu temanmu!</p>
+                    <div class="bg-yellow-100 p-4 rounded-lg mb-6">
+                        <h3 class="font-bold text-yellow-800">💡 Fakta Seru!</h3>
+                        <p class="text-yellow-900">${currentGame.funFact}</p>
+                    </div>
+                    <button onclick="showMenu()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg text-xl transition-transform btn-press-effect">Pilih Teman Lain</button>
+                `;
+            } else if (type === 'gameover') {
+                content = `
+                    <div class="text-7xl mb-4">😵</div>
+                    <h2 class="text-4xl font-black text-red-600 mb-2">Oh, tidak!</h2>
+                    <p class="text-lg text-gray-700 mb-6">Kamu menyentuh benda berbahaya. Hati-hati, ya!</p>
+                    <button onclick="startGame(currentGame.key)" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg text-xl transition-transform btn-press-effect">Coba Lagi</button>
+                `;
+            } else if (type === 'developer') {
+                content = `
+                    <div class="text-5xl mb-4">👨‍💻</div>
+                    <h2 class="text-3xl font-black text-gray-800 mb-2">Profil Pengembang</h2>
+                    <p class="text-lg text-gray-700 mb-1 font-bold">Riko Trisusilo, S.Pd.Gr</p>
+                    <p class="text-gray-500 mb-4">Seorang Guru PJOK yang bersemangat dari Samarinda, menciptakan pengalaman bermain yang ceria,mendidik dan menyenangkan.</p>
+                    <button onclick="hideModal()" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg text-xl transition-transform btn-press-effect">Kembali</button>
+                `;
+            }
+            modalContent.innerHTML = content;
+            modalContainer.classList.remove('hidden');
+        }
+
+        function hideModal() {
+            modalContainer.classList.add('hidden');
+        }
+
+        function isColliding(rect1, rect2) {
+            return !(rect1.right < rect2.left || rect1.left > rect2.right || rect1.bottom < rect2.top || rect1.top > rect2.bottom);
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast-message bg-white text-amber-600 font-bold py-2 px-4 rounded-full shadow-lg';
+            toast.textContent = message;
+            toastContainer.innerHTML = '';
+            toastContainer.appendChild(toast);
+        }
+
+        function updateScore() {
+            document.getElementById('info-score').textContent = `${currentGame.score} / ${currentGame.totalFood}`;
+        }
+
+        function showMenu() {
+            clearInterval(gameInterval);
+            gameScreen.classList.add('hidden');
+            modalContainer.classList.add('hidden');
+            characterSelectionScreen.classList.remove('hidden');
+        }
+
+        // --- EVENT LISTENERS ---
+        leftBtn.addEventListener('click', () => moveHorizontal(-1));
+        rightBtn.addEventListener('click', () => moveHorizontal(1));
+        upBtn.addEventListener('click', () => moveVertical(1));
+        downBtn.addEventListener('click', () => moveVertical(-1));
+
+        document.addEventListener('keydown', (e) => {
+            if (gameScreen.classList.contains('hidden') || isGameOver) return;
+            switch (e.key) {
+                case 'ArrowLeft': moveHorizontal(-1); break;
+                case 'ArrowRight': moveHorizontal(1); break;
+                case 'ArrowUp': e.preventDefault(); moveVertical(1); break;
+                case 'ArrowDown': e.preventDefault(); moveVertical(-1); break;
+            }
+        });
+    </script>
+</body>
+</html>
